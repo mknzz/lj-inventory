@@ -15,6 +15,17 @@ local isCrafting = false
 local isHotbar = false
 local showTrunkPos = false
 local itemInfos = {}
+local showBlur = true
+
+RegisterNUICallback('showBlur', function()
+    Wait(50)
+    TriggerEvent("lj-inventory:client:showBlur")
+end) 
+
+RegisterNetEvent("lj-inventory:client:showBlur", function()
+    Wait(50)
+    showBlur = not showBlur
+end)
 
 -- Functions
 
@@ -69,11 +80,7 @@ local function FormatWeaponAttachments(itemdata)
 end
 
 local function IsBackEngine(vehModel)
-    for _, model in pairs(BackEngineVehicles) do
-        if GetHashKey(model) == vehModel then
-            return true
-        end
-    end
+    if BackEngineVehicles[vehModel] then return true end
     return false
 end
 
@@ -279,13 +286,16 @@ RegisterNetEvent('weapons:client:SetCurrentWeapon', function(data, bool)
     end
 end)
 
-RegisterNetEvent('inventory:client:ItemBox', function(itemData, type)
+RegisterNetEvent('inventory:client:ItemBox', function(itemData, type, amount)
+    amount = amount or 1
     SendNUIMessage({
         action = "itemBox",
         item = itemData,
-        type = type
+        type = type,
+        itemAmount = amount
     })
 end)
+
 
 RegisterNetEvent('inventory:client:requiredItems', function(items, bool)
     local itemTable = {}
@@ -317,7 +327,9 @@ RegisterNetEvent('inventory:client:OpenInventory', function(PlayerAmmo, inventor
     if not IsEntityDead(PlayerPedId()) then
         Wait(500)
         ToggleHotbar(false)
-        TriggerScreenblurFadeIn(1000)
+        if showBlur == true then
+            TriggerScreenblurFadeIn(1000)
+        end
         SetNuiFocus(true, true)
         if other ~= nil then
             currentOtherInventory = other.name
@@ -822,7 +834,7 @@ CreateThread(function()
         if DropsNear ~= nil then
             for k, v in pairs(DropsNear) do
                 if DropsNear[k] ~= nil then
-                    DrawMarker(2, v.coords.x, v.coords.y, v.coords.z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.3, 0.3, 0.15, 255, 255, 255, 155, false, false, false, 1, false, false, false)
+                    DrawMarker( 20, v.coords.x, v.coords.y, v.coords.z - 0.6, 0, 0, 0, 0, 0, 0, 0.35, 0.5, 0.15, 252, 255, 255, 91, 0, 0, 0, 0)
                 end
             end
         end
@@ -855,7 +867,7 @@ CreateThread(function()
     end
 end)
 
-CreateThread(function()
+--[[CreateThread(function()
 	while true do
 		Wait(0)
 		local pos, awayFromObject = GetEntityCoords(PlayerPedId()), true
@@ -884,7 +896,7 @@ CreateThread(function()
 	while true do
 		local pos = GetEntityCoords(PlayerPedId())
 		local inRange = false
-		local distance = #(pos - vector3(Config.AttachmentCrafting["location"].x, Config.AttachmentCrafting["location"].y, Config.AttachmentCrafting["location"].z))
+		local distance = #(pos - Config.AttachmentCrafting.location)
 
 		if distance < 10 then
 			inRange = true
@@ -905,4 +917,46 @@ CreateThread(function()
 
 		Wait(3)
 	end
+end)]]--
+
+    --qb-target
+    RegisterNetEvent("inventory:client:Crafting", function(dropId)
+	local crafting = {}
+	crafting.label = "Crafting"
+	crafting.items = GetThresholdItems()
+	TriggerServerEvent("inventory:server:OpenInventory", "crafting", math.random(1, 99), crafting)
 end)
+
+
+RegisterNetEvent("inventory:client:WeaponAttachmentCrafting", function(dropId)
+	local crafting = {}
+	crafting.label = "Attachment Crafting"
+	crafting.items = GetAttachmentThresholdItems()
+	TriggerServerEvent("inventory:server:OpenInventory", "attachment_crafting", math.random(1, 99), crafting)
+end)
+
+local toolBoxModels = {
+    `prop_toolchest_05`,
+    `prop_tool_bench02_ld`,
+    `prop_tool_bench02`,
+    `prop_toolchest_02`,
+    `prop_toolchest_03`,
+    `prop_toolchest_03_l2`,
+    `prop_toolchest_05`,
+    `prop_toolchest_04`,
+}
+exports['qb-target']:AddTargetModel(toolBoxModels, {
+		options = {
+			{
+				event = "inventory:client:WeaponAttachmentCrafting",
+				icon = "fas fa-wrench",
+				label = "Weapon Attachment Crafting", 
+			},
+			{
+				event = "inventory:client:Crafting",
+				icon = "fas fa-wrench",
+				label = "Item Crafting", 
+			},
+		},
+    distance = 1.0
+})
